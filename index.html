@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Marathon Tracker">
+<meta name="theme-color" content="#0A0E1A">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Marathon Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0A0E1A;--surface:#111827;--surface2:#1C2333;--surface3:#252E42;
+  --accent:#FF6B35;--accent2:#FFB347;--blue:#4A9EFF;--green:#3DD68C;
+  --red:#FF5F5F;--purple:#A78BFA;--yellow:#F9E79F;
+  --text:#F0F4FF;--text2:#8B97B0;--text3:#4A5568;
+  --border:#1E2A3A;--border2:#2A3A52;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  --r:12px;--r2:18px;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow:hidden}
+body{display:flex;flex-direction:column;max-width:430px;margin:0 auto;position:relative}
+
+/* LAYOUT */
+.statusbar{
+  padding:calc(var(--safe-top) + 8px) 20px 6px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;color:var(--text2);font-family:var(--mono);
+  background:var(--bg);flex-shrink:0;
+}
+.screens{flex:1;overflow:hidden;position:relative}
+.screen{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  display:none;flex-direction:column;padding-bottom:16px}
+.screen::-webkit-scrollbar{display:none}
+.screen.active{display:flex}
+.nav{
+  display:flex;background:var(--surface);
+  border-top:1px solid var(--border);
+  padding:8px 0 calc(var(--safe-bot) + 8px);
+  flex-shrink:0;
+}
+.nav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:4px 2px;cursor:pointer;border:none;background:none;
+  color:var(--text3);font-family:var(--font);font-size:10px;font-weight:500;
+  transition:.2s;
+}
+.nav-btn.active{color:var(--accent)}
+.nav-btn svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+/* HEADER */
+.hdr{padding:16px 20px 8px;display:flex;justify-content:space-between;align-items:flex-start;flex-shrink:0}
+.hdr h1{font-size:24px;font-weight:600;letter-spacing:-.5px;line-height:1.1}
+.hdr-sub{font-size:11px;color:var(--text2);margin-top:3px}
+
+/* CARDS */
+.card{background:var(--surface);border-radius:var(--r2);margin:0 16px 12px;padding:16px;border:1px solid var(--border)}
+.card-title{font-size:12px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+
+/* METRICS */
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 16px 12px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:14px 12px}
+.metric-label{font-size:10px;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.metric-val{font-size:26px;font-weight:600;line-height:1;letter-spacing:-1px;font-family:var(--mono)}
+.metric-sub{font-size:11px;color:var(--text2);margin-top:5px}
+
+/* RING */
+.ring-card{background:var(--surface);border-radius:var(--r2);margin:0 16px 12px;padding:18px 16px;border:1px solid var(--border)}
+.ring-center{display:flex;justify-content:center;margin-bottom:14px}
+.ring-stats{display:flex;justify-content:space-around}
+.ring-stat{text-align:center}
+.ring-stat-val{font-size:16px;font-weight:600;font-family:var(--mono)}
+.ring-stat-lbl{font-size:10px;color:var(--text2);margin-top:2px}
+
+/* CHART */
+.chart-wrap{display:flex;align-items:flex-end;gap:4px;height:80px}
+.cbar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.cbar-inner{width:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px;height:70px}
+.cbar{border-radius:3px 3px 0 0;min-height:2px;width:10px}
+.cbar-lbl{font-size:8px;color:var(--text3);font-family:var(--mono);margin-top:2px}
+
+/* PHASE BADGES */
+.phase-badge{font-size:10px;font-weight:500;padding:3px 10px;border-radius:20px;display:inline-block}
+.phase-F{background:#1A3A5C;color:#4A9EFF}
+.phase-B{background:#1A3D2A;color:#3DD68C}
+.phase-P{background:#3D2A1A;color:#FFB347}
+.phase-T{background:#3D1A1A;color:#FF6B6B}
+
+/* WEEK SELECTOR */
+.wk-sel{display:flex;align-items:center;gap:8px;margin:0 16px 12px}
+.wk-btn{width:40px;height:40px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);font-size:20px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;flex-shrink:0;user-select:none}
+.wk-btn:active{background:var(--surface3)}
+.wk-info{flex:1;text-align:center}
+.wk-info h2{font-size:17px;font-weight:600}
+.wk-info p{font-size:11px;color:var(--text2);margin-top:2px}
+
+/* DAY ROWS */
+.day-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)}
+.day-row:last-child{border-bottom:none}
+.day-d{font-size:11px;font-family:var(--mono);color:var(--text2);width:26px;flex-shrink:0}
+.day-info{flex:1;min-width:0}
+.day-act{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.day-date{font-size:10px;color:var(--text3);margin-top:1px}
+.day-sched{font-size:11px;font-family:var(--mono);color:var(--text3);width:34px;text-align:right;flex-shrink:0}
+.day-inp{
+  width:58px;background:var(--surface3);border:1px solid var(--border2);
+  border-radius:10px;color:var(--text);font-family:var(--mono);font-size:14px;
+  padding:6px 4px;text-align:center;outline:none;flex-shrink:0;
+  -webkit-appearance:none;appearance:none;
+}
+.day-inp:focus{border-color:var(--accent);background:var(--surface2)}
+.day-inp::placeholder{color:var(--text3)}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+
+/* WEEKLY TOTAL BANNER */
+.wk-total-banner{
+  margin:0 16px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;
+}
+.wk-total-lbl{font-size:11px;color:var(--text2)}
+.wk-total-val{font-size:20px;font-weight:600;font-family:var(--mono);color:var(--accent)}
+.wk-diff{font-size:11px;font-family:var(--mono)}
+
+/* BUTTONS */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:14px;border-radius:var(--r);font-family:var(--font);font-size:15px;
+  font-weight:500;cursor:pointer;border:none;transition:.15s;
+}
+.btn:active{opacity:.8;transform:scale(.98)}
+.btn-primary{background:var(--accent);color:#fff;width:100%}
+.btn-row{margin:10px 16px 0;display:flex;gap:8px}
+
+/* SCHEDULE LIST */
+.wk-list-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.wk-list-row:last-child{border-bottom:none}
+.wk-num-circle{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.wk-list-info{flex:1;min-width:0}
+.wk-list-name{font-size:13px;font-weight:500}
+.wk-list-dates{font-size:10px;color:var(--text2);margin-top:1px}
+.mini-prog{flex:1;max-width:72px}
+.mini-bar-bg{height:4px;background:var(--border2);border-radius:2px;overflow:hidden}
+.mini-bar-fill{height:4px;border-radius:2px;transition:.3s}
+.mini-pct{font-size:9px;color:var(--text2);text-align:right;margin-top:2px;font-family:var(--mono)}
+.now-badge{font-size:9px;padding:2px 6px;border-radius:8px;background:#FF6B3522;color:var(--accent);flex-shrink:0}
+
+/* LONG RUNS */
+.lr-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
+.lr-row:last-child{border-bottom:none}
+.lr-wk{font-size:11px;font-family:var(--mono);color:var(--text2);width:24px;flex-shrink:0}
+.lr-date{font-size:11px;color:var(--text2);width:44px;flex-shrink:0}
+.lr-bar-col{flex:1}
+.lr-bar-bg{height:5px;background:var(--border2);border-radius:3px;overflow:hidden;margin-bottom:3px}
+.lr-bar-fill{height:5px;border-radius:3px;transition:.4s}
+.lr-mi{font-size:12px;font-family:var(--mono);width:38px;text-align:right;flex-shrink:0}
+.lr-sched{font-size:9px;color:var(--text3);font-family:var(--mono);text-align:right;margin-top:1px}
+
+/* ACHIEVEMENTS */
+.ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ach{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 8px;display:flex;align-items:center;gap:8px}
+.ach.locked{opacity:.3;filter:grayscale(1)}
+.ach-ico{font-size:22px;width:28px;text-align:center;flex-shrink:0}
+.ach-name{font-size:11px;font-weight:500;line-height:1.3}
+.ach-sub{font-size:9px;color:var(--text2);margin-top:2px}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(16px);
+  background:var(--green);color:#000;font-size:13px;font-weight:500;
+  padding:10px 22px;border-radius:30px;opacity:0;transition:.3s;
+  pointer-events:none;white-space:nowrap;z-index:999;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:32px 20px;color:var(--text2);font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="statusbar">
+  <span id="clock">9:41 AM</span>
+  <span style="font-size:10px">● ● ●</span>
+</div>
+
+<div class="screens">
+
+  <!-- DASHBOARD -->
+  <div class="screen active" id="s-dash">
+    <div class="hdr">
+      <div>
+        <h1>Dashboard</h1>
+        <div class="hdr-sub" id="dash-date"></div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:20px;font-weight:600;color:var(--accent);font-family:var(--mono)" id="days-left">—</div>
+        <div style="font-size:10px;color:var(--text2)">days to race</div>
+      </div>
+    </div>
+
+    <!-- PROGRESS RING -->
+    <div class="ring-card">
+      <div class="ring-center">
+        <svg width="156" height="156" viewBox="0 0 156 156">
+          <defs>
+            <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#FF6B35"/>
+              <stop offset="100%" stop-color="#FFB347"/>
+            </linearGradient>
+          </defs>
+          <circle cx="78" cy="78" r="66" fill="none" stroke="#1C2333" stroke-width="13"/>
+          <circle id="ring" cx="78" cy="78" r="66" fill="none" stroke="url(#rg)" stroke-width="13"
+            stroke-linecap="round" stroke-dasharray="414.69" stroke-dashoffset="414.69"
+            transform="rotate(-90 78 78)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1)"/>
+          <text id="ring-pct" x="78" y="70" text-anchor="middle" fill="#F0F4FF" font-size="30" font-weight="600" font-family="DM Sans,sans-serif">0%</text>
+          <text x="78" y="87" text-anchor="middle" fill="#8B97B0" font-size="11" font-family="DM Sans,sans-serif">of plan complete</text>
+          <text id="ring-mi" x="78" y="104" text-anchor="middle" fill="#4A5568" font-size="10" font-family="DM Mono,monospace">0 / 0 mi</text>
+        </svg>
+      </div>
+      <div class="ring-stats">
+        <div class="ring-stat"><div class="ring-stat-val" id="r-thisweek" style="color:var(--blue)">0.0</div><div class="ring-stat-lbl">this week (mi)</div></div>
+        <div class="ring-stat"><div class="ring-stat-val" id="r-streak" style="color:var(--accent2)">0</div><div class="ring-stat-lbl">week streak</div></div>
+        <div class="ring-stat"><div class="ring-stat-val" id="r-longbest" style="color:var(--green)">0.0</div><div class="ring-stat-lbl">best long run</div></div>
+      </div>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric">
+        <div class="metric-label">Total Miles</div>
+        <div class="metric-val" id="m-act" style="color:var(--accent)">0.0</div>
+        <div class="metric-sub">of <span id="m-sched">0</span> scheduled</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Weeks Logged</div>
+        <div class="metric-val" id="m-wks" style="color:var(--blue)">0</div>
+        <div class="metric-sub">of 31 total</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Ahead / Behind</div>
+        <div class="metric-val" id="m-diff">+0</div>
+        <div class="metric-sub">vs schedule</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Longest Run</div>
+        <div class="metric-val" id="m-long" style="color:var(--purple)">0.0</div>
+        <div class="metric-sub">miles</div>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="card-title" style="margin:0">Recent Weeks</div>
+        <div style="display:flex;gap:10px;font-size:10px;color:var(--text2)">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--border2);margin-right:3px"></span>sched</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);margin-right:3px"></span>actual</span>
+        </div>
+      </div>
+      <div class="chart-wrap" id="chart"></div>
+    </div>
+
+    <!-- ACHIEVEMENTS -->
+    <div class="card">
+      <div class="card-title">Achievements</div>
+      <div class="ach-grid" id="ach-grid"></div>
+    </div>
+  </div>
+
+  <!-- LOG MILES -->
+  <div class="screen" id="s-log">
+    <div class="hdr"><div><h1>Log Miles</h1><div class="hdr-sub">Tap a week, enter your miles</div></div></div>
+
+    <div class="wk-sel">
+      <div class="wk-btn" id="prev-wk">‹</div>
+      <div class="wk-info">
+        <h2 id="log-wk-title">Week 1</h2>
+        <p id="log-wk-dates">Mar 30 – Apr 5</p>
+      </div>
+      <div class="wk-btn" id="next-wk">›</div>
+    </div>
+
+    <div style="margin:0 16px 10px;display:flex;justify-content:space-between;align-items:center">
+      <span class="phase-badge phase-F" id="log-phase">Foundation</span>
+      <span style="font-size:11px;color:var(--text2)">Sched: <span style="font-family:var(--mono);color:var(--text)" id="log-sched">0 mi</span></span>
+    </div>
+
+    <div class="card" style="padding:12px 14px">
+      <div id="day-rows"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="save-btn">Save Week</button>
+    </div>
+
+    <div style="margin:10px 16px 0">
+      <div class="wk-total-banner">
+        <div>
+          <div class="wk-total-lbl">Week Total</div>
+          <div class="wk-total-val" id="log-total">0.0 mi</div>
+        </div>
+        <div style="text-align:right">
+          <div class="wk-total-lbl">vs scheduled</div>
+          <div class="wk-diff" id="log-diff">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE -->
+  <div class="screen" id="s-sched">
+    <div class="hdr"><div><h1>Schedule</h1><div class="hdr-sub">All 31 weeks • Nov 1 race day</div></div></div>
+    <div class="card" style="padding:10px 14px">
+      <div id="sched-list"></div>
+    </div>
+  </div>
+
+  <!-- LONG RUNS -->
+  <div class="screen" id="s-long">
+    <div class="hdr"><div><h1>Long Runs</h1><div class="hdr-sub">Every Saturday</div></div></div>
+    <div class="metric-grid">
+      <div class="metric">
+        <div class="metric-label">Best Long Run</div>
+        <div class="metric-val" id="lr-best" style="color:var(--accent)">0.0</div>
+        <div class="metric-sub">miles</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Total Long Miles</div>
+        <div class="metric-val" id="lr-tot" style="color:var(--green)">0.0</div>
+        <div class="metric-sub">logged</div>
+      </div>
+    </div>
+    <div class="card" style="padding:10px 14px">
+      <div id="lr-list"></div>
+    </div>
+  </div>
+
+</div><!-- /screens -->
+
+<!-- BOTTOM NAV -->
+<nav class="nav">
+  <button class="nav-btn active" data-s="s-dash">
+    <svg viewBox="0 0 22 22"><rect x="2" y="2" width="8" height="8" rx="2"/><rect x="12" y="2" width="8" height="8" rx="2"/><rect x="2" y="12" width="8" height="8" rx="2"/><rect x="12" y="12" width="8" height="8" rx="2"/></svg>
+    Dashboard
+  </button>
+  <button class="nav-btn" data-s="s-log">
+    <svg viewBox="0 0 22 22"><circle cx="11" cy="11" r="9"/><polyline points="11,7 11,11 14,13"/></svg>
+    Log Miles
+  </button>
+  <button class="nav-btn" data-s="s-sched">
+    <svg viewBox="0 0 22 22"><rect x="3" y="4" width="16" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="6" y1="2" x2="6" y2="6"/><line x1="3" y1="10" x2="19" y2="10"/></svg>
+    Schedule
+  </button>
+  <button class="nav-btn" data-s="s-long">
+    <svg viewBox="0 0 22 22"><polyline points="2,16 7,9 11,13 15,7 20,10"/><circle cx="20" cy="4" r="2" fill="currentColor"/></svg>
+    Long Runs
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const RACE = new Date('2026-11-01');
+const W1_MON = new Date('2026-03-30');
+const CIRC = 414.69;
+
+const WEEKS = [
+  {ph:'Foundation',days:[{d:'Mon',a:'Walk 20min',s:0},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Walk 25min',s:0},{d:'Thu',a:'Rest',s:0},{d:'Fri',a:'Walk 30min',s:0},{d:'Sat',a:'Walk 40min',s:2.5},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Foundation',days:[{d:'Mon',a:'Walk 30min',s:0},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Walk/Run 2mi',s:2},{d:'Thu',a:'Rest',s:0},{d:'Fri',a:'Walk 30min',s:0},{d:'Sat',a:'Walk 45min',s:2.8},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Foundation',days:[{d:'Mon',a:'Walk/Run 2mi',s:2},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Walk/Run 2.5mi',s:2.5},{d:'Thu',a:'Rest',s:0},{d:'Fri',a:'Walk 2mi',s:0},{d:'Sat',a:'Walk/Run 3mi',s:3},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Foundation',days:[{d:'Mon',a:'Walk/Run 2.5mi',s:2.5},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Walk/Run 3mi',s:3},{d:'Thu',a:'Rest',s:0},{d:'Fri',a:'Walk 2mi',s:0},{d:'Sat',a:'Walk/Run 4mi',s:4},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Foundation',days:[{d:'Mon',a:'Run 2mi',s:2},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 2.5mi',s:2.5},{d:'Thu',a:'Rest',s:0},{d:'Fri',a:'Walk/Run 2mi',s:2},{d:'Sat',a:'Run/Walk 5mi',s:5},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Foundation',days:[{d:'Mon',a:'Run 2.5mi',s:2.5},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 3mi',s:3},{d:'Thu',a:'Rest',s:0},{d:'Fri',a:'Walk 2mi',s:0},{d:'Sat',a:'Run 6mi',s:6},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Base Build',days:[{d:'Mon',a:'Run 3mi',s:3},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 3mi',s:3},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 2mi',s:2},{d:'Sat',a:'Run 7mi',s:7},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Base Build',days:[{d:'Mon',a:'Run 3mi',s:3},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 4mi',s:4},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 2mi',s:2},{d:'Sat',a:'Run 8mi',s:8},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Base Build',days:[{d:'Mon',a:'Run 4mi',s:4},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 4mi',s:4},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 3mi',s:3},{d:'Sat',a:'Run 9mi',s:9},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Base Build',days:[{d:'Mon',a:'Run 4mi',s:4},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 5mi',s:5},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 3mi',s:3},{d:'Sat',a:'Run 10mi',s:10},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Base Build',days:[{d:'Mon',a:'Run 4mi',s:4},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 5mi',s:5},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 3mi',s:3},{d:'Sat',a:'Run 11mi',s:11},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Base Build',days:[{d:'Mon',a:'Run 5mi',s:5},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 6mi',s:6},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 4mi',s:4},{d:'Sat',a:'Run 12mi',s:12},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Base Build',days:[{d:'Mon',a:'Run 5mi',s:5},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 6mi',s:6},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 4mi',s:4},{d:'Sat',a:'Run 13mi',s:13},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Base Build',days:[{d:'Mon',a:'Run 5mi',s:5},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 6mi',s:6},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 4mi',s:4},{d:'Sat',a:'Run 14mi',s:14},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Peak',days:[{d:'Mon',a:'Run 5mi',s:5},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 7mi',s:7},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 5mi',s:5},{d:'Sat',a:'Run 15mi',s:15},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Peak',days:[{d:'Mon',a:'Run 6mi',s:6},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 7mi',s:7},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 5mi',s:5},{d:'Sat',a:'Run 16mi',s:16},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Peak',days:[{d:'Mon',a:'Run 6mi',s:6},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 8mi',s:8},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 5mi',s:5},{d:'Sat',a:'Run 14mi',s:14},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Peak',days:[{d:'Mon',a:'Run 6mi',s:6},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 8mi',s:8},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 5mi',s:5},{d:'Sat',a:'Run 17mi',s:17},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Peak',days:[{d:'Mon',a:'Run 6mi',s:6},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 8mi',s:8},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 5mi',s:5},{d:'Sat',a:'Run 18mi',s:18},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Peak',days:[{d:'Mon',a:'Run 6mi',s:6},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 8mi',s:8},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 5mi',s:5},{d:'Sat',a:'Run 16mi',s:16},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Peak',days:[{d:'Mon',a:'Run 6mi',s:6},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 8mi',s:8},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 5mi',s:5},{d:'Sat',a:'Run 19mi',s:19},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Peak',days:[{d:'Mon',a:'Run 7mi',s:7},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 9mi',s:9},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 6mi',s:6},{d:'Sat',a:'Run 20mi',s:20},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Peak',days:[{d:'Mon',a:'Run 7mi',s:7},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 9mi',s:9},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 6mi',s:6},{d:'Sat',a:'Run 18mi',s:18},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Peak',days:[{d:'Mon',a:'Run 7mi',s:7},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 9mi',s:9},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 6mi',s:6},{d:'Sat',a:'Run 20mi',s:20},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Peak',days:[{d:'Mon',a:'Run 6mi',s:6},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 8mi',s:8},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 5mi',s:5},{d:'Sat',a:'Run 16mi',s:16},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Peak',days:[{d:'Mon',a:'Run 5mi',s:5},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 7mi',s:7},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 4mi',s:4},{d:'Sat',a:'Run 12mi',s:12},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Taper',days:[{d:'Mon',a:'Run 5mi',s:5},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 6mi',s:6},{d:'Thu',a:'Cross-Train',s:0},{d:'Fri',a:'Run 4mi',s:4},{d:'Sat',a:'Run 10mi',s:10},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Taper',days:[{d:'Mon',a:'Run 4mi',s:4},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 5mi',s:5},{d:'Thu',a:'Rest',s:0},{d:'Fri',a:'Run 3mi',s:3},{d:'Sat',a:'Run 8mi',s:8},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Taper',days:[{d:'Mon',a:'Run 4mi',s:4},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 5mi',s:5},{d:'Thu',a:'Rest',s:0},{d:'Fri',a:'Run 3mi',s:3},{d:'Sat',a:'Run 6mi',s:6},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Taper',days:[{d:'Mon',a:'Run 3mi',s:3},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 4mi',s:4},{d:'Thu',a:'Rest',s:0},{d:'Fri',a:'Run 2mi',s:2},{d:'Sat',a:'Run 4mi',s:4},{d:'Sun',a:'Rest',s:0}]},
+  {ph:'Taper',days:[{d:'Mon',a:'Run 2mi',s:2},{d:'Tue',a:'Rest',s:0},{d:'Wed',a:'Run 3mi',s:3},{d:'Thu',a:'Rest',s:0},{d:'Fri',a:'Rest',s:0},{d:'Sat',a:'Rest',s:0},{d:'Sun',a:'MARATHON! 26.2mi',s:26.2}]},
+];
+
+const PH_CODE = {Foundation:'F','Base Build':'B',Peak:'P',Taper:'T'};
+const PH_COL = {Foundation:'#4A9EFF','Base Build':'#3DD68C',Peak:'#FFB347',Taper:'#FF6B6B'};
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function wkDates(i){
+  const mon=new Date(W1_MON); mon.setDate(mon.getDate()+i*7);
+  const sun=new Date(mon); sun.setDate(sun.getDate()+6);
+  const f=d=>`${d.getMonth()+1}/${d.getDate()}`;
+  const fm=d=>d.toLocaleDateString([],{month:'short',day:'numeric'});
+  return {mon,sun,short:`${f(mon)}–${f(sun)}`,nice:`${fm(mon)} – ${fm(sun)}`};
+}
+function wkSched(i){return WEEKS[i].days.reduce((s,d)=>s+d.s,0)}
+function getA(wi,di){return(stored[wi]||{})[di]||0}
+function setA(wi,di,v){if(!stored[wi])stored[wi]={};stored[wi][di]=v;persist()}
+function wkActual(wi){return WEEKS[wi].days.reduce((s,_,di)=>s+getA(wi,di),0)}
+function totalSched(){return WEEKS.reduce((s,_,i)=>s+wkSched(i),0)}
+function totalActual(){return WEEKS.reduce((s,_,i)=>s+wkActual(i),0)}
+function wkDone(wi){const s=wkSched(wi);return s>0&&wkActual(wi)>=s*0.9}
+function curWeek(){
+  const now=new Date(); let w=0;
+  for(let i=0;i<31;i++){const {mon,sun}=wkDates(i);if(now>=mon&&now<=sun)return i;if(now>sun)w=i+1;}
+  return Math.min(w,30);
+}
+function fmt1(n){return parseFloat(n.toFixed(1))}
+
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+let stored={};
+try{const s=localStorage.getItem('mt_data');if(s)stored=JSON.parse(s);}catch(e){}
+function persist(){try{localStorage.setItem('mt_data',JSON.stringify(stored));}catch(e){}}
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+tick(); setInterval(tick,15000);
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+let curScreen='s-dash';
+const renderers={'s-dash':renderDash,'s-log':renderLog,'s-sched':renderSched,'s-long':renderLong};
+document.querySelectorAll('.nav-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    const s=b.dataset.s;
+    document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
+    document.getElementById(s).classList.add('active');
+    b.classList.add('active');
+    curScreen=s;
+    renderers[s]&&renderers[s]();
+  });
+});
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderDash(){
+  const now=new Date();
+  document.getElementById('dash-date').textContent=now.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});
+  const dLeft=Math.ceil((RACE-now)/864e5);
+  document.getElementById('days-left').textContent=dLeft>0?dLeft:'Race Day!';
+
+  const ta=totalActual(), ts=totalSched(), pct=ts>0?ta/ts:0;
+  document.getElementById('ring').style.strokeDashoffset=CIRC*(1-Math.min(pct,1));
+  document.getElementById('ring-pct').textContent=Math.round(pct*100)+'%';
+  document.getElementById('ring-mi').textContent=`${fmt1(ta)} / ${Math.round(ts)} mi`;
+
+  const cw=curWeek();
+  document.getElementById('r-thisweek').textContent=fmt1(wkActual(cw));
+
+  let streak=0; for(let i=cw-1;i>=0;i--){if(wkDone(i))streak++;else break;}
+  document.getElementById('r-streak').textContent=streak;
+
+  let bestLong=0; for(let i=0;i<31;i++){const v=getA(i,5);if(v>bestLong)bestLong=v;}
+  document.getElementById('r-longbest').textContent=fmt1(bestLong);
+
+  document.getElementById('m-act').textContent=fmt1(ta);
+  document.getElementById('m-sched').textContent=Math.round(ts);
+  document.getElementById('m-wks').textContent=WEEKS.filter((_,i)=>wkActual(i)>0).length;
+
+  const diff=ta-ts;
+  const diffEl=document.getElementById('m-diff');
+  diffEl.textContent=(diff>=0?'+':'')+fmt1(diff);
+  diffEl.style.color=diff>=0?'var(--green)':'var(--red)';
+
+  let longest=0;
+  for(let i=0;i<31;i++)WEEKS[i].days.forEach((_,di)=>{const v=getA(i,di);if(v>longest)longest=v;});
+  document.getElementById('m-long').textContent=fmt1(longest);
+
+  // Chart
+  const seenWks=[];
+  for(let i=0;i<31&&seenWks.length<8;i++){if(wkActual(i)>0||i<=cw)seenWks.push(i);}
+  const last8=seenWks.slice(-8);
+  const maxM=Math.max(1,...last8.map(i=>Math.max(wkSched(i),wkActual(i))));
+  document.getElementById('chart').innerHTML=last8.map(i=>{
+    const sc=wkSched(i),ac=wkActual(i);
+    const sh=Math.max(2,Math.round((sc/maxM)*66)), ah=Math.max(2,Math.round((ac/maxM)*66));
+    const col=ac>=sc&&ac>0?'var(--green)':'var(--accent)';
+    return `<div class="cbar-group">
+      <div class="cbar-inner">
+        <div class="cbar" style="height:${sh}px;background:var(--border2)"></div>
+        <div class="cbar" style="height:${ah}px;background:${col}"></div>
+      </div>
+      <div class="cbar-lbl">W${i+1}</div>
+    </div>`;
+  }).join('');
+
+  // Achievements
+  const achs=[
+    {i:'🎯',n:'First Mile',s:'Log your first run',u:ta>0},
+    {i:'🔥',n:'On Fire',s:'3+ week streak',u:streak>=3},
+    {i:'🏃',n:'10-Miler',s:'10+ miles in one run',u:longest>=10},
+    {i:'⚡',n:'Half-Marathon',s:'13+ mile long run',u:bestLong>=13.1},
+    {i:'🦁',n:'20-Miler',s:'Complete 20mi long run',u:bestLong>=20},
+    {i:'🏆',n:'Finisher',s:'Race day complete!',u:getA(30,6)>0},
+  ];
+  document.getElementById('ach-grid').innerHTML=achs.map(a=>
+    `<div class="ach${a.u?'':' locked'}">
+      <div class="ach-ico">${a.i}</div>
+      <div><div class="ach-name">${a.n}</div><div class="ach-sub">${a.s}</div></div>
+    </div>`).join('');
+}
+
+// ── LOG ───────────────────────────────────────────────────────────────────────
+let logWk=curWeek();
+
+function renderLog(){
+  const w=WEEKS[logWk];
+  const wd=wkDates(logWk);
+  document.getElementById('log-wk-title').textContent=`Week ${logWk+1}`;
+  document.getElementById('log-wk-dates').textContent=wd.nice;
+  const pc=PH_CODE[w.ph];
+  document.getElementById('log-phase').textContent=w.ph;
+  document.getElementById('log-phase').className=`phase-badge phase-${pc}`;
+  document.getElementById('log-sched').textContent=fmt1(wkSched(logWk))+' mi';
+
+  const dayDate=di=>{const dt=new Date(wd.mon);dt.setDate(dt.getDate()+di);return`${dt.getMonth()+1}/${dt.getDate()}`;};
+  document.getElementById('day-rows').innerHTML=w.days.map((day,di)=>{
+    const v=getA(logWk,di);
+    const rest=day.a==='Rest'||day.a==='Cross-Train'||day.s===0&&day.a==='Rest';
+    const isRunDay=day.s>0||day.a.includes('Run')||day.a.includes('Walk');
+    const inp=isRunDay
+      ?`<input class="day-inp" type="number" inputmode="decimal" min="0" max="40" step="0.1" placeholder="0.0" value="${v||''}" data-di="${di}">`
+      :`<span style="font-size:11px;color:var(--text3);font-family:var(--mono);width:58px;text-align:center;display:block">${day.a==='Cross-Train'?'X-Train':'Rest'}</span>`;
+    return `<div class="day-row">
+      <div class="day-d">${day.d}</div>
+      <div class="day-info">
+        <div class="day-act">${day.a}</div>
+        <div class="day-date">${dayDate(di)}</div>
+      </div>
+      <div class="day-sched">${day.s>0?day.s+'mi':'—'}</div>
+      ${inp}
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('.day-inp').forEach(inp=>inp.addEventListener('input',calcLogTotal));
+  calcLogTotal();
+}
+
+function calcLogTotal(){
+  let tot=0;
+  document.querySelectorAll('.day-inp').forEach(inp=>{tot+=parseFloat(inp.value)||0;});
+  const sc=wkSched(logWk);
+  document.getElementById('log-total').textContent=fmt1(tot)+' mi';
+  const diff=tot-sc;
+  const de=document.getElementById('log-diff');
+  de.textContent=(diff>=0?'+':'')+fmt1(diff)+' mi';
+  de.style.color=diff>=0?'var(--green)':'var(--red)';
+}
+
+document.getElementById('prev-wk').addEventListener('click',()=>{if(logWk>0){logWk--;renderLog();}});
+document.getElementById('next-wk').addEventListener('click',()=>{if(logWk<30){logWk++;renderLog();}});
+document.getElementById('save-btn').addEventListener('click',()=>{
+  document.querySelectorAll('.day-inp').forEach(inp=>{
+    setA(logWk,parseInt(inp.dataset.di),parseFloat(inp.value)||0);
+  });
+  toast(`Week ${logWk+1} saved! 💪`);
+});
+
+// ── SCHEDULE ──────────────────────────────────────────────────────────────────
+function renderSched(){
+  const cw=curWeek();
+  document.getElementById('sched-list').innerHTML=WEEKS.map((w,i)=>{
+    const wd=wkDates(i), sc=wkSched(i), ac=wkActual(i);
+    const pct=sc>0?Math.min(ac/sc,1):0;
+    const col=PH_COL[w.ph];
+    const done=wkDone(i);
+    const isNow=i===cw;
+    return `<div class="wk-list-row" style="${isNow?'background:var(--surface2);border-radius:10px;margin:0 -14px;padding:10px 14px;':''}">
+      <div class="wk-num-circle" style="background:${col}22;color:${col}">${i+1}</div>
+      <div class="wk-list-info">
+        <div class="wk-list-name">${done?'✓ ':''}${w.ph}</div>
+        <div class="wk-list-dates">${wd.short}</div>
+      </div>
+      <div class="mini-prog">
+        <div class="mini-bar-bg"><div class="mini-bar-fill" style="width:${Math.round(pct*100)}%;background:${col}"></div></div>
+        <div class="mini-pct">${fmt1(ac)}/${fmt1(sc)}mi</div>
+      </div>
+      ${isNow?'<div class="now-badge">Now</div>':''}
+    </div>`;
+  }).join('');
+}
+
+// ── LONG RUNS ─────────────────────────────────────────────────────────────────
+function renderLong(){
+  const lrs=WEEKS.map((w,i)=>{
+    const sat=new Date(W1_MON); sat.setDate(sat.getDate()+i*7+5);
+    return{wk:i+1,date:sat,sched:w.days[5].s,actual:getA(i,5)};
+  });
+  const best=Math.max(0,...lrs.map(r=>r.actual));
+  const tot=lrs.reduce((s,r)=>s+r.actual,0);
+  document.getElementById('lr-best').textContent=fmt1(best);
+  document.getElementById('lr-tot').textContent=fmt1(tot);
+  const maxM=Math.max(20,...lrs.map(r=>Math.max(r.sched,r.actual)));
+  document.getElementById('lr-list').innerHTML=lrs.map(r=>{
+    const sw=Math.round((r.sched/maxM)*100);
+    const aw=Math.round((r.actual/maxM)*100);
+    const col=r.actual>=r.sched&&r.actual>0?'var(--green)':r.actual>0?'var(--accent)':'var(--border2)';
+    const fd=d=>`${d.getMonth()+1}/${d.getDate()}`;
+    return `<div class="lr-row">
+      <div class="lr-wk">W${r.wk}</div>
+      <div class="lr-date">${fd(r.date)}</div>
+      <div class="lr-bar-col">
+        <div class="lr-bar-bg"><div class="lr-bar-fill" style="width:${sw}%;background:var(--border2)"></div></div>
+        <div class="lr-bar-bg"><div class="lr-bar-fill" style="width:${aw}%;background:${col}"></div></div>
+      </div>
+      <div>
+        <div class="lr-mi" style="color:${col}">${r.actual>0?fmt1(r.actual)+'mi':'—'}</div>
+        <div class="lr-sched">${r.sched>0?r.sched+'s':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── SERVICE WORKER ────────────────────────────────────────────────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+logWk=curWeek();
+setTimeout(renderDash,80);
+</script>
+</body>
+</html>
